@@ -8,10 +8,10 @@ find_library(Zmq_LIBRARIES
     zmq
     PATHS /usr/lib /usr/local/lib ${Zmq_DIR}/lib
 )
-#message(STATUS "Zmg:${Zmq_INCLUDE_DIR} ${Zmq_LIBRARIES}")
+message(STATUS "Zmg:${Zmq_INCLUDE_DIR} ${Zmq_LIBRARIES}")
 string(COMPARE NOTEQUAL "${Zmq_INCLUDE_DIR}"  "" Zmq_INCLUDE_DIR-NOTFOUND)
 string(COMPARE NOTEQUAL "${Zmq_LIBRARIES}"  "" Zmq_LIBRARIES-NOTFOUND)
-message(STATUS "Zmg:${Zmq_INCLUDE_DIR-NOTFOUND} ${Zmq_LIBRARIES-NOTFOUND}")
+#message(STATUS "Zmg:${Zmq_INCLUDE_DIR-NOTFOUND} ${Zmq_LIBRARIES-NOTFOUND}")
 if(Zmq_INCLUDE_DIR-NOTFOUND)
     message(WARNING "Zmq_INCLUDE_DIR-NOTFOUND")
     set(Zmg-NOTFOUND ON)
