@@ -16,6 +16,7 @@ BackendMgr::backend_ptr BackendMgr::Alloc(uint32_t id, const std::string& url)
     ptr->connect(id, url);
     backends_array_.push_back(ptr);
     backends_.insert(std::make_pair(id, ptr));
+    return ptr;
 }
 BackendMgr::backend_ptr BackendMgr::Get(uint32_t id)
 {
@@ -31,11 +32,6 @@ BackendMgr::backend_ptr BackendMgr::Get()
 
 void BackendMgr::recv()
 {
-    
-    // zmq::pollitem_t items[] = {
-    //     { static_cast<void*>(zsocket_), 0, ZMQ_POLLIN, 0 } 
-    // };
-    
     try {
         std::vector<zmq::pollitem_t> zitem_array;    
         for(auto it:backends_array_ )    
