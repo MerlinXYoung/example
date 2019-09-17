@@ -1,9 +1,10 @@
 #include "Client.h"
 #include <stdlib.h>
+#include <arpa/inet.h>
 #include "ClientMgr.h"
 #include "Backend.h"
 #include "BackendMgr.h"
-
+#include "log.h"
 void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) ;
 void on_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf);
 
@@ -46,7 +47,7 @@ void Client::async_write()
     }
     uv_write((uv_write_t*) req, native_uv<uv_stream_t>(), req->bufs_, req->bufs_size_, /*on_write*/ [](uv_write_t *req, int status) {
         if (status) {
-            fprintf(stderr, "Write error %s\n", uv_strerror(status));
+            log_error( "Write error %s\n", uv_strerror(status));
         }
         Client::free_write_req(req);
     });
@@ -57,33 +58,44 @@ int Client::async_read()
     return uv_read_start(native_uv<uv_stream_t>(), alloc_buffer, on_read);
 }
 
+void Client::set_backend_id(uint32_t backend_id)
+{
+    log_trace("backend_id:%u", backend_id);
+    backend_id_ = backend_id;
+}
+void Client::ntoh_body_len()
+{
+    recv_pkg_len_ = ntohl(recv_pkg_len_);
+}
 
 void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
     Client* client = reinterpret_cast<Client*>(handle->data);
     if(client->is_recving_pkg_len())
     {
-        printf("client[%u] alloc head! suggested[%lu]\n",client->id(),suggested_size);
+        log_trace("client[%u] alloc head! suggested[%lu]\n",client->id(),suggested_size);
         buf->base = client->recv_pkg_len_buf();
         buf->len = client->recv_pkg_len_buf_size();
-        printf("base[%p] len[%lu]\n", buf->base, buf->len);
+        log_trace("base[%p] len[%lu]\n", buf->base, buf->len);
     }
     else
     {
-        printf("client[%u] alloc body len[%u]! suggested[%lu]\n",
+        log_trace("client[%u] alloc body len[%u]! suggested[%lu]\n",
             client->id(),client->recv_pkg_len(), suggested_size);
         buf->base = (char*) malloc(client->recv_pkg_len());
         buf->len = client->recv_pkg_len();
     }
 }
 void on_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
+    log_trace("");
     Client* client = reinterpret_cast<Client*>(handle->data);
     if (nread > 0) {
         if(client->is_recving_pkg_len())
         {
-            printf("read head len[%ld]\n", nread);
+            log_trace("read head len[%ld]\n", nread);
             if(nread == buf->len)
             {
                 //ntoh 
+                client->ntoh_body_len();
                 client->recving_pkg();
                 //client->read();
             }
@@ -94,8 +106,9 @@ void on_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
         }
         else
         {
+            log_trace("");
             uint32_t client_id = client->id();
-            printf("client[%u] read body len[%ld] {%.*s}\n", client_id, nread, nread, buf->base);
+            log_trace("client[%u] read body len[%ld] {%.*s}\n", client_id, nread, nread, buf->base);
             // client_req_t req={*buf, client->id()};
             // g_client_req_queue.push(req);
             
@@ -115,7 +128,7 @@ void on_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
             //client->read();
             break;
         default: 
-            fprintf(stderr, "Read error %s\n", uv_err_name(nread));
+            log_error( "Read error %s\n", uv_err_name(nread));
             uv_close((uv_handle_t*)handle, [](uv_handle_t* handle) {
                 Client* client = reinterpret_cast<Client*>(handle->data);
                 ClientMgr::instance().Free(client->id());
@@ -127,10 +140,10 @@ void on_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
     }
     else 
     {
-        printf("client[%u] read size[%ld]\n", client->id(), nread);
+        log_trace("client[%u] read size[%ld]\n", client->id(), nread);
         if( client->is_recving_pkg_len() )
             return ;
     }
-
-    free(buf->base);
+    if(!client->is_recving_pkg_len())
+        free(buf->base);
 }

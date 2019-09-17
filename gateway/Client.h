@@ -38,10 +38,7 @@ public:
     {
         return backend_id_;
     }
-    void set_backend_id(uint32_t backend_id)
-    {
-        backend_id_ = backend_id;
-    }
+    void set_backend_id(uint32_t backend_id);
     void async_write(uv_buf_t buf)
     {
         res_queue_.push(buf);
@@ -73,6 +70,7 @@ public:
     {
         return recv_pkg_len_;
     }
+    void ntoh_body_len();
 private:
     static inline uint32_t alloc_id()
     {

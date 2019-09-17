@@ -1,6 +1,7 @@
 #include "BackendMgr.h"
 #include "Backend.h"
 #include "Client.h"
+#include "log.h"
 #include <vector>
 #include <unordered_set>
 
@@ -11,8 +12,9 @@ BackendMgr& BackendMgr::instance()
 }
 BackendMgr::backend_ptr BackendMgr::Alloc(uint32_t id, const std::string& url)
 {
+    log_trace("id:%u", id);
     //Backend* backend = new Backend;
-    auto ptr = std::shared_ptr<Backend>(new Backend);// std::make_shared<Backend>();
+    auto ptr = std::make_shared<Backend>();
     ptr->connect(id, url);
     backends_array_.push_back(ptr);
     backends_.insert(std::make_pair(id, ptr));
@@ -20,6 +22,7 @@ BackendMgr::backend_ptr BackendMgr::Alloc(uint32_t id, const std::string& url)
 }
 BackendMgr::backend_ptr BackendMgr::Get(uint32_t id)
 {
+    log_trace("id:%u", id);
     auto it = backends_.find(id);
     return it == backends_.end()?nullptr:it->second;
 }
@@ -27,11 +30,13 @@ BackendMgr::backend_ptr BackendMgr::Get(uint32_t id)
 BackendMgr::backend_ptr BackendMgr::Get()
 {
     uint32_t idx=0;
+    log_trace("idx[%u] size[%lu]", idx, backends_array_.size());
     return backends_array_[idx++%backends_array_.size()];
 }
 
 void BackendMgr::recv()
 {
+    log_trace("");
     try {
         std::vector<zmq::pollitem_t> zitem_array;    
         for(auto it:backends_array_ )    

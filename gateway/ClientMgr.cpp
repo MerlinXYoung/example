@@ -1,6 +1,7 @@
 #include "ClientMgr.h"
 #include "Client.h"
 #include "stdex.h"
+#include "log.h"
 ClientMgr& ClientMgr::instance()
 {
     static ClientMgr _instance;
@@ -9,9 +10,11 @@ ClientMgr& ClientMgr::instance()
 
 Client* ClientMgr::Alloc()
 {
+    log_trace("");
     Client *client = new Client;
     client_map_.emplace(client->id(), 
         std::unique_ptr<Client>(client));
+    return client;
 }
 void ClientMgr::Free(uint32_t id)
 {

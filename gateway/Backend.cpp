@@ -4,9 +4,11 @@
 #include <unordered_set>
 #include "Client.h"
 #include "ClientMgr.h"
+#include "log.h"
 
 void Backend::connect(uint32_t id, const std::string& url)
 {
+    id_ = id;
     zsocket_.connect(url);
     set_id(id);
 }
@@ -36,7 +38,7 @@ void Backend::recv()
             // 10 milliseconds
             zmq::poll(items, 1, 0);
             if (items[0].revents & ZMQ_POLLIN) {
-                // printf("\n%s ", identity);
+                // log_trace("\n%s ", identity);
                 // s_dump(client_socket_);
                 uv_buf_t buf;
                 zmq::message_t message;
@@ -49,7 +51,7 @@ void Backend::recv()
                 memcpy(buf.base, message.data()+sizeof(uint32_t), buf.len);
                 
                 std::string data(static_cast<char*>(message.data()+sizeof(uint32_t)), size-sizeof(uint32_t));
-                printf("msg[%u]:%s\n", client_id, data.c_str());
+                log_trace("msg[%u]:%s\n", client_id, data.c_str());
                 auto client = ClientMgr::instance().Get(client_id);
                 if(client)
                 {
@@ -78,17 +80,31 @@ Client* Backend::recv()
 
     try
     {
+        int more=0;
         uv_buf_t buf={0};
+        zmq::message_t message_client;
+        zsocket_.recv(&message_client);
+        size_t more_size = sizeof (more);
+        zsocket_.getsockopt(ZMQ_RCVMORE, &more, &more_size);
+        int size = message_client.size();
+        if(!more || size != sizeof(uint32_t))
+        {
+            log_error("fuck message not more or  not client id");
+            return nullptr;
+        }
+        //std::string str_client_id(reinterpret_cast<char *>(message.data()), size);
+        uint32_t client_id = *reinterpret_cast<uint32_t*>(message_client.data());//atol(str_client_id.c_str());
         zmq::message_t message;
         zsocket_.recv(&message);
-        int size = message.size();
-        std::string str_client_id(static_cast<char *>(message.data()), sizeof(uint32_t));
-        uint32_t client_id = atol(str_client_id.c_str());
-        buf.base = (char *)malloc(size - sizeof(uint32_t));
-        buf.len = size - sizeof(uint32_t);
-        memcpy(buf.base, message.data() + sizeof(uint32_t), buf.len);
-        std::string data(static_cast<char *>(message.data() + sizeof(uint32_t)), size - sizeof(uint32_t));
-        printf("msg[%u]:%s\n", client_id, data.c_str());
+        size = message.size();
+        buf.base = (char *)malloc(size+sizeof(uint32_t));
+        buf.len = size+sizeof(uint32_t);
+        const char* d= reinterpret_cast<char *>(message.data());
+        uint32_t nlen = htonl(size);
+        memcpy(buf.base, &nlen, sizeof(nlen));
+        memcpy(buf.base+sizeof(uint32_t), message.data(), size);
+        std::string data(d, size);
+        log_trace("msg[%u]:%s\n", client_id, data.c_str());
         auto client = ClientMgr::instance().Get(client_id);
         if (client)
         {
