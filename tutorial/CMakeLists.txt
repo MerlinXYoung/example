@@ -11,3 +11,6 @@ foreach(src ${SRCS})
     target_link_libraries(${target} zmq libgonet libgo boost_context boost_regex boost_system boost_thread pthread dl)
     
 endforeach(src ${SRCS})
+
+add_subdirectory(backend)
+add_subdirectory(client)
