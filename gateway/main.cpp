@@ -1,6 +1,8 @@
 #include <iostream>
 
 #include <uv.h>
+#include <curl/curl.h>
+#include <uvcurl/uvcurl.h>
 
 #include "Acceptor.h"
 #include "BackendMgr.h"
@@ -8,6 +10,10 @@
 
 using namespace std;
 #define DEFAULT_PORT 20801
+
+
+
+std::unique_ptr<uvcurl::Multi> g_multi;
 
 int main(int args, char** argv)
 {
@@ -25,6 +31,16 @@ int main(int args, char** argv)
     uv_prepare_start(&prepare_zmq, [](uv_prepare_t* handle){
         BackendMgr::instance().recv();
     });
+    // auth  curl
+    if (curl_global_init(CURL_GLOBAL_ALL)) {
+        fprintf(stderr, "Could not init cURL\n");
+        return 1;
+    }
+
+    //uvcurl::Multi multi;
+    g_multi.reset(new uvcurl::Multi);
+    g_multi->init(*loop);
+
 
     return uv_run(loop, UV_RUN_DEFAULT);
 }

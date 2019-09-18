@@ -1,18 +1,16 @@
 #include "app_id.h"
 #include <arpa/inet.h>
-#if 0
+#include <netinet/in.h>
+#if 1
 appid_t str2appid(const char* str)
 {
     struct in_addr netAddr;
-    netAddr.s_addr = inet_addr(str);
-    int ret = inet_aton(strAddr, &netAddr);
-    return netAddr.s_addr;
+    return static_cast<appid_t>(inet_aton(str, &netAddr));
 
 }
-const char* appid2str(appid_t)
+const char* appid2str(appid_t id)
 {
-    struct in_addr netAddr;
-    netAddr.s_addr = inet_addr(str);
+    struct in_addr netAddr = {id};
     return inet_ntoa(netAddr);
 }
 #endif

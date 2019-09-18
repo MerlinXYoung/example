@@ -5,6 +5,7 @@
 #include "Backend.h"
 #include "BackendMgr.h"
 #include "log.h"
+#include "stdex.h"
 void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) ;
 void on_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf);
 
@@ -21,6 +22,24 @@ void Client::free_write_req(uv_write_t *req) {
     free(wr);
 }
 
+uint32_t Client::recv_buf_t::dilatation() {
+    uint32_t size = 0;
+    if(size_ < 1024)
+        size = 1024;
+    else if(size_ < 1024*4)
+        size = size_*2;
+    else
+        size = size_*1.75;
+    
+    char* base = (char*)malloc(size);
+    if(!base )
+        return size_;
+    memcpy(base, base_, used_);
+    base_ = base;
+    size_ = size;
+    return size_;
+}
+
 
 
 int Client::init(uv_loop_t* loop)
@@ -29,6 +48,9 @@ int Client::init(uv_loop_t* loop)
     if(ires !=0 )
         return ires;
     tcp_.data=this;
+
+    std::bzero(recv_buf_);
+    status_ = EStatus::Inited;
     
 
     return 0;
@@ -57,6 +79,13 @@ int Client::async_read()
 {
     return uv_read_start(native_uv<uv_stream_t>(), alloc_buffer, on_read);
 }
+void Client::async_close()
+{
+    uv_close(native_uv<uv_handle_t>(), [](uv_handle_t* handle) {
+                Client* client = reinterpret_cast<Client*>(handle->data);
+                ClientMgr::instance().Free(client->id());
+            });
+}
 
 void Client::set_backend_id(uint32_t backend_id)
 {
@@ -67,9 +96,29 @@ void Client::ntoh_body_len()
 {
     recv_pkg_len_ = ntohl(recv_pkg_len_);
 }
-
+void Client::try_alloc_recv_buf()
+{
+    if(recv_buf_.is_full())
+        recv_buf_.dilatation();
+}
+void Client::get_buf(uv_buf_t& buf)
+{
+    buf.base = recv_buf_.curr();
+    buf.len = recv_buf_.remainder();
+}
+void Client::auth_cb(int status)
+{
+    log_trace("auth status[%d]", status);
+    if(0 == status)
+        status_ = EStatus::Authed;
+    async_close();
+}
 void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
     Client* client = reinterpret_cast<Client*>(handle->data);
+#if 1
+    client->try_alloc_recv_buf();
+    client->get_buf(*buf);
+#else
     if(client->is_recving_pkg_len())
     {
         log_trace("client[%u] alloc head! suggested[%lu]\n",client->id(),suggested_size);
@@ -84,7 +133,70 @@ void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
         buf->base = (char*) malloc(client->recv_pkg_len());
         buf->len = client->recv_pkg_len();
     }
+#endif
 }
+#if 1
+void Client::recved(ssize_t len)
+{
+    recv_buf_.use(len);
+    char* curr = recv_buf_.base_;
+    char* curr_base = recv_buf_.base_;
+    uint32_t buf_len = recv_buf_.get_used();
+    do
+    {
+        uint32_t body_len = 0 ;
+        if(buf_len< sizeof(uint32_t))
+            break ;
+        
+        body_len = ntohl(*reinterpret_cast<uint32_t*>(curr));
+        curr += sizeof(uint32_t);
+        buf_len -= sizeof(uint32_t);
+
+        if(buf_len < body_len)
+            break ;
+        
+        BackendMgr::instance().Get(backend_id())->send(id_, curr, body_len);
+
+        curr += body_len;
+        buf_len -= body_len;
+        curr_base = curr;
+    }while(buf_len>0);
+
+    if(curr_base != recv_buf_.base_ && buf_len>0)
+    {
+        memcpy(recv_buf_.base_, curr_base, buf_len);
+    }
+    recv_buf_.used_ = buf_len;
+
+}
+void on_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
+    log_trace("");
+    Client* client = reinterpret_cast<Client*>(handle->data);
+    if (nread > 0) {
+        
+        client->recved(nread);
+        return;
+    }
+    else if (nread < 0) {
+        switch(nread)
+        {
+        case UV_EOF:
+            break;
+        case UV_ENOBUFS:
+            //client->read();
+            break;
+        default: 
+            log_error( "Read error %s\n", uv_err_name(nread));
+            client->async_close();
+            break;
+        }   
+    }
+    else 
+    {
+        log_trace("client[%u] read size[%ld]\n", client->id(), nread);
+    }
+}
+#else
 void on_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
     log_trace("");
     Client* client = reinterpret_cast<Client*>(handle->data);
@@ -147,3 +259,4 @@ void on_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
     if(!client->is_recving_pkg_len())
         free(buf->base);
 }
+#endif

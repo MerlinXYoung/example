@@ -8,6 +8,6 @@ foreach(src ${SRCS})
     string(REPLACE "${CMAKE_CURRENT_SOURCE_DIR}/" "" target ${target})
     #message(STATUS "target:${target}")
     add_executable(${target} ${src})
-    target_link_libraries(${target} uv zmq)
+    target_link_libraries(${target} zmq libgonet libgo boost_context boost_regex boost_system boost_thread pthread dl)
     
 endforeach(src ${SRCS})

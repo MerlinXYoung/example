@@ -19,5 +19,17 @@ std::unique_ptr<T> make_unique(Args&&... args)
 T(const T&)=delete; \
 T& operator()(const T&)=delete
 
+namespace std{
+template<class T>
+void bzero(T& t)
+{
+    bzero(&t, sizeof(t));
+}
 
+template<class T>
+void bzero(T* p)
+{
+    bzero(p, sizeof(T));
+}
+}
 

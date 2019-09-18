@@ -35,10 +35,7 @@ int Acceptor::listen(const char* ip, int port)
             client->async_read();
         }
         else {
-            uv_close(client->native_uv<uv_handle_t>(), [](uv_handle_t* handle) {
-                Client* client = reinterpret_cast<Client*>(handle->data);
-                ClientMgr::instance().Free(client->id());
-            });
+            client->async_close();
         }
     });
     if (r) {

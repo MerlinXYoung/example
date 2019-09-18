@@ -13,15 +13,51 @@ private:
 
     } write_req_t;
     
+    
     static void free_write_req(uv_write_t *req);
+
+    struct recv_buf_t{
+        char* base_;
+        uint32_t used_;
+        uint32_t size_;
+        bool is_full()const {return size_ == used_;}
+        bool is_empty()const {return size_ == 0;}
+        uint32_t remainder()const
+        {
+            return size_ - used_;
+        }
+        void use(ssize_t len)
+        {
+            used_+=len;
+        }
+        uint32_t get_used()const
+        {
+            return used_;
+        }
+        char* curr()
+        {
+            return base_ + used_;
+        }
+        uint32_t dilatation();
+    } ;
+
+    
     
 public:
+    enum class EStatus
+    {
+        New=0,
+        Inited, 
+        Authing,
+        Authed,
+    };
     friend class ClientMgr;
     using res_queue_t = std::queue<uv_buf_t>;
     Client()
     {
         recving_pkg_len_=true;
         id_ = alloc_id();
+        status_ = EStatus::New;
     }
     int init(uv_loop_t* loop);
 
@@ -45,6 +81,9 @@ public:
     }
     void async_write();
     int async_read();
+    void async_close();
+
+    void auth_cb(int status);
 
     inline bool is_recving_pkg_len()const
     {
@@ -71,6 +110,10 @@ public:
         return recv_pkg_len_;
     }
     void ntoh_body_len();
+
+    void try_alloc_recv_buf();
+    void get_buf(uv_buf_t& buf);
+    void recved(ssize_t len);
 private:
     static inline uint32_t alloc_id()
     {
@@ -81,8 +124,10 @@ protected:
     uv_tcp_t tcp_;
     uint32_t id_;
     uint32_t backend_id_;
+    EStatus status_;
     uint32_t recv_pkg_len_;
     bool recving_pkg_len_;
+    recv_buf_t recv_buf_;
     res_queue_t res_queue_;
 
 
