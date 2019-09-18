@@ -1,0 +1,57 @@
+#include "QQAuth.h"
+#include <curl/curl.h>
+#include <sstream>
+#include <uvcurl/uvcurl.h>
+#include <memory>
+#include <assert.h>
+#include "log.h"
+#include "ClientMgr.h"
+#include "Client.h"
+
+extern std::unique_ptr<uvcurl::Multi> g_multi;
+int QQAuth::do_auth(uint32_t client_id, const char* openid, const char* appkey) 
+{
+    time_t now = time(NULL);
+    char sig[100];
+    snprintf(sig, sizeof(sig),"%s%ld", qq_appkey, now);
+    std::stringstream ss;
+    ss<<qq_auth_url<<"?timestamp="<<now<<"&appid="<<qq_appid<<"&sig="<<sig<<"&openid="<<openid<<"&openkey="<<appkey;//<<"&userip"
+    std::string url = ss.str();
+    CURL *handle = curl_easy_init();
+    qq_auth_context_t* context = uvcurl_malloc(qq_auth_context_t);
+    new(context) qq_auth_context_t(client_id, handle);
+    curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, [](char *ptr, size_t size, size_t nmemb, void *userdata)->size_t{
+        size_t xSize = size*nmemb;
+        std::string * pStr = reinterpret_cast<std::string*>(userdata);
+        if ( pStr )
+            pStr->append(ptr, xSize);
+
+        return xSize;
+    });
+    curl_easy_setopt(handle, CURLOPT_WRITEDATA, reinterpret_cast<void*>(&context->data_));
+    curl_easy_setopt(handle, CURLOPT_URL, url.c_str());
+
+    //curl_multi_add_handle(curl_handle, handle);
+    g_multi->async_preform(handle, [context](CURL* curl){
+        assert(curl == context->curl_);
+        long res_code =0; 
+        char *done_url;
+        curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL,
+                            &done_url);
+        int res=curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &res_code);
+        log_trace("client[%u] url[%s] http_code[%ld]", context->client_id_, done_url, res_code);
+        auto client = ClientMgr::instance().Get(context->client_id_);
+        if(!client)
+            return ;
+        //正确响应后，请请求转写成本地文件的文件
+        if(( res == CURLE_OK ) && (res_code == 200 || res_code == 201))
+        {
+            log_trace("http rsp[%s]", context->data_.c_str());
+            client->auth_cb(0);
+        }
+
+
+    });
+
+    fprintf(stderr, "Added %s \n", url.c_str());
+}
