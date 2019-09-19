@@ -37,7 +37,7 @@ int main(int argc, char** argv)
                 size = message.size();
                 std::string data(reinterpret_cast<char*>(message.data()), size);
                 printf("msg[%u]:%s\n", client_id, data.c_str());
-                std::string rsp = data+" rsp!";
+                std::string rsp = data +" rsp!";
                 std::string notify1("notify1");
                 std::string notify2("notify2");
                 server.send(&client_id, sizeof(client_id), ZMQ_SNDMORE);                

@@ -142,20 +142,28 @@ void Client::recved(ssize_t len)
     char* curr = recv_buf_.base_;
     char* curr_base = recv_buf_.base_;
     uint32_t buf_len = recv_buf_.get_used();
+    gw::cs::ReqParser parser;
     do
     {
-        uint32_t body_len = 0 ;
-        if(buf_len< sizeof(uint32_t))
+        int64_t full_pkg_len =  parser.check(curr, buf_len);
+        if(full_pkg_len == 0)
+            break;
+        if(full_pkg_len <0)
+        {
+            async_close();
             break ;
-        
-        body_len = ntohl(*reinterpret_cast<uint32_t*>(curr));
-        curr += sizeof(uint32_t);
-        buf_len -= sizeof(uint32_t);
-
-        if(buf_len < body_len)
-            break ;
-        
-        BackendMgr::instance().Get(backend_id())->send(id_, curr, body_len);
+        }
+        google::protobuf::message * message;
+        EMsgID msgid = parser.parse(message);
+        if(EMsgID::Invalid == msgid)
+        {
+            async_close();
+            break;
+        }
+        if(EMsgID::Other == msgid)
+            BackendMgr::instance().Get(backend_id())->send(id_, curr, body_len);
+        else
+            cshandler.doProcess(id_, msgid, *message);
 
         curr += body_len;
         buf_len -= body_len;

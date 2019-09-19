@@ -57,6 +57,12 @@ int main()
         go [&client]{
             
             char buf[1024];
+            char openid[128];
+            char openkey[128];
+            printf("please entry openid openkey:\n");
+            scanf("%s%s", openid, openkey);
+            printf("openid[%s] openkey[%s]\n", openid, openkey);
+            
             while(true)
             {
                 printf("please entry:\n");
