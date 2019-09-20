@@ -6,6 +6,8 @@
 #include "BackendMgr.h"
 #include "log.h"
 #include "stdex.h"
+#include "cs_gateway_utility.h"
+#include "Handler.h"
 void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) ;
 void on_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf);
 
@@ -153,20 +155,23 @@ void Client::recved(ssize_t len)
             async_close();
             break ;
         }
-        google::protobuf::message * message;
-        EMsgID msgid = parser.parse(message);
-        if(EMsgID::Invalid == msgid)
+        google::protobuf::Message * message;
+        gw::cs::Head head;
+        gw::cs::EMsgID msgid = parser.parse(head, message);
+        if(gw::cs::EMsgID::Invalid == msgid)
         {
             async_close();
             break;
         }
-        if(EMsgID::Other == msgid)
-            BackendMgr::instance().Get(backend_id())->send(id_, curr, body_len);
+        if(gw::cs::EMsgID::Other == msgid)
+            BackendMgr::instance().Get(backend_id())->send(id_, curr+sizeof(uint32_t), full_pkg_len - sizeof(uint32_t));
         else
-            cshandler.doProcess(id_, msgid, *message);
+        {
+            cshandler.doProcess(id_, head, *message);
+        }
 
-        curr += body_len;
-        buf_len -= body_len;
+        curr += full_pkg_len;
+        buf_len -= full_pkg_len;
         curr_base = curr;
     }while(buf_len>0);
 

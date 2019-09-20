@@ -4,4 +4,4 @@ file(GLOB HDS "*.h")
 
 
 add_executable(backend ${SRCS} ${HDS})
-target_link_libraries(backend zmq)
+target_link_libraries(backend libzmq)

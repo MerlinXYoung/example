@@ -1,5 +1,5 @@
-#include "cs_gateway_utlity.h"
-
+#include "cs_gateway_utility.h"
+#include <arpa/inet.h>
 namespace gw
 {
 namespace cs
@@ -24,14 +24,14 @@ int64_t ReqParser::check(char* base, uint32_t len)
 
     return body_len+sizeof(uint32_t);
 }
-EMsgID ReqParser::parse(Head& head, google::protobuf::message*& msg)
+EMsgID ReqParser::parse(Head& head, google::protobuf::Message*& msg)
 {
     uint16_t head_len = 0; 
     if(pkg_len_< sizeof(uint16_t))
         return EMsgID::Invalid ;
-    head_len = ntoh(*reinterpret_cast<uint16_t*>(pkg_));
+    head_len = ntohs(*reinterpret_cast<uint16_t*>(pkg_));
 
-    head.Parse
+    head.Sal
     
 }
 

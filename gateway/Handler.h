@@ -4,9 +4,9 @@
 class CSHandler
 {
 public:
-    int doHandle(uint32_t client_id, gw::cs::EMsgID msgid, google::protobuf::message& msg);
+    int doProcess(uint32_t client_id, const gw::cs::Head& head, google::protobuf::Message& msg);
 private:
-    int doAuth(uint32_t client_id, gw::cs::EMsgID msgid, google::protobuf::message& msg);
+    int doAuth(uint32_t client_id, const gw::cs::Head& head, gw::cs::AuthReq& req);
 
 };
 
