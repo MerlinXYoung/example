@@ -3,6 +3,7 @@
 **************************************************/
 #include <stdio.h>
 #include <libgonet/network.h>
+#include "../../build/gateway/cs_gateway.pb.h"
 using namespace std;
 using namespace network;
  
@@ -62,13 +63,47 @@ int main()
             printf("please entry openid openkey:\n");
             scanf("%s%s", openid, openkey);
             printf("openid[%s] openkey[%s]\n", openid, openkey);
+            gw::cs::Head head;
+            gw::cs::AuthReq req;
+            head.set_msgid( gw::cs::EMsgID::Auth);
+            req.set_openid(openid);
+            req.set_openkey(openkey);
+            uint32_t& pkg_len = *reinterpret_cast<uint32_t*>(buf);
+            uint16_t& head_len = *reinterpret_cast<uint16_t*>(buf+sizeof(uint32_t));
+            uint32_t curr_len = sizeof(buf) - sizeof(uint32_t) - sizeof(uint16_t);
+            char* curr = buf+sizeof(uint32_t) +sizeof(uint16_t);
+            if(!head.SerializePartialToArray(curr, curr_len))
+                printf("fuck serialize head\n");
+            uint16_t hlen = head.GetCachedSize();
+            head_len = htons(hlen);
+
+            curr+= hlen;
+            curr_len -= hlen;
+
+            if(!req.SerializePartialToArray(curr, curr_len))
+                printf("fuck serialize body\n");
             
+            uint32_t blen = req.GetCachedSize();
+            uint32_t plen = sizeof(uint16_t) + hlen + blen;
+            pkg_len = htonl(plen);
+            plen += sizeof(uint32_t);
+            printf("plen[%u] hlen[%u] blen[%u]\n", plen, hlen, blen);
+            for(uint32_t i=0;i< hlen+blen;++i)
+            {
+                printf("%2X ", static_cast<int>(*(buf+sizeof(uint32_t) +sizeof(uint16_t)+i)));
+            }
+            printf("\n");
+            client.Send(buf, plen, [](boost_ec ec) {
+                            printf("send len ec:%s\n", ec.message().c_str());
+                        });
+
             while(true)
             {
                 printf("please entry:\n");
                 scanf("%s",buf);
                 if(strcmp(buf,"exit")==0)
                     break;
+                
                 uint32_t len = strlen(buf);
                 uint32_t nlen = htonl(len);
                 client.Send(&nlen, sizeof(nlen), [](boost_ec ec) {

@@ -1,5 +1,6 @@
-#include "cs_gateway_utility.h"
+#include <cs_gateway_utility.h>
 #include <arpa/inet.h>
+#include "../log.h"
 namespace gw
 {
 namespace cs
@@ -21,6 +22,15 @@ int64_t ReqParser::check(char* base, uint32_t len)
     
     pkg_ = base;
     pkg_len_ = body_len;
+    char buf[1024];
+    char *curr = buf;
+    for(int i=0;i<body_len-sizeof(uint16_t);++i)
+    {
+        size_t n = sprintf(curr, "%2X ", static_cast<int>(*(pkg_+sizeof(uint16_t)+i)));
+        curr+=n;
+    }
+    log_trace("%s",buf); 
+
 
     return body_len+sizeof(uint32_t);
 }
@@ -30,8 +40,15 @@ EMsgID ReqParser::parse(Head& head, google::protobuf::Message*& msg)
     if(pkg_len_< sizeof(uint16_t))
         return EMsgID::Invalid ;
     head_len = ntohs(*reinterpret_cast<uint16_t*>(pkg_));
-
-    head.Sal
+    char* curr = pkg_+sizeof(uint16_t);
+    if(!head.ParseFromArray(curr, head_len))
+        return EMsgID::Invalid;
+    curr+=head_len;
+    if(EMsgID::Auth == head.msgid())
+        msg = new gw::cs::AuthReq;
+    if(!msg->ParseFromArray(curr, pkg_len_ - head_len -sizeof(uint16_t)))
+        return EMsgID::Invalid;
+    return head.msgid();
     
 }
 

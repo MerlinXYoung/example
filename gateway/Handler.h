@@ -1,5 +1,5 @@
 #pragma once
-#include "cs_gateway.pb.h"
+#include "../build/gateway/cs_gateway.pb.h"
 
 class CSHandler
 {

@@ -16,7 +16,7 @@ int main(int argc, char** argv)
     while(true)
     {
         try {
-            zmq::poll(items, 1, 0);
+            zmq::poll(items, 1, 50);
             if (items[0].revents & ZMQ_POLLIN) {
                 // printf("\n%s ", identity);
                 // s_dump(client_socket_);
