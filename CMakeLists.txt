@@ -52,6 +52,6 @@ find_package(Libgonet REQUIRED)
 include_directories(${Libgonet_INCLUDE_DIR})
 link_directories(${Libgonet_LIBRARY_DIR})
 
-add_subdirectory(uvcurl)
+add_subdirectory(uvcurlpp)
 add_subdirectory(gateway)
 add_subdirectory(tutorial)
