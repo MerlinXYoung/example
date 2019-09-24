@@ -4,13 +4,32 @@
 #include <queue>
 
 class Client {
+  public:
+    enum class EStatus {
+      New = 0,
+      Inited,
+      Authing,
+      Authed,
+    };
+  friend class ClientMgr;
+  using res_queue_t = std::queue<uv_buf_t>;
  private:
-  typedef struct {
+  struct write_req_t{
     uv_write_t req_;
     uint32_t bufs_size_;
     uv_buf_t* bufs_;
+    write_req_t():req_{},bufs_size_(0),bufs_(nullptr){}
+    write_req_t(res_queue_t& res_queue):req_{},bufs_size_(static_cast<uint32_t>(res_queue.size())),bufs_(nullptr)
+    {
+      bufs_ = new uv_buf_t[bufs_size_];
+      for (uint32_t i = 0; i < bufs_size_; ++i) {
+        bufs_[i] = res_queue.front();
+        res_queue.pop();
+      }
 
-  } write_req_t;
+    }
+
+  };
 
   static void free_write_req(uv_write_t* req);
 
@@ -18,6 +37,10 @@ class Client {
     char* base_;
     uint32_t used_;
     uint32_t size_;
+    recv_buf_t():base_(nullptr),used_(0),size_(0){}
+    ~recv_buf_t(){
+       delete [] base_;
+    }
     bool is_full() const { return size_ == used_; }
     bool is_empty() const { return size_ == 0; }
     uint32_t remainder() const { return size_ - used_; }
@@ -28,18 +51,9 @@ class Client {
   };
 
  public:
-  enum class EStatus {
-    New = 0,
-    Inited,
-    Authing,
-    Authed,
-  };
-  friend class ClientMgr;
-  using res_queue_t = std::queue<uv_buf_t>;
-  Client() {
-    recving_pkg_len_ = true;
-    id_ = alloc_id();
-    status_ = EStatus::New;
+
+  Client():id_(alloc_id()),backend_id_(0),status_(EStatus::New),tcp_{} {
+
   }
   int init(uv_loop_t* loop);
 
@@ -57,16 +71,6 @@ class Client {
 
   void auth_cb(int status);
 
-  inline bool is_recving_pkg_len() const { return recving_pkg_len_; }
-  inline void recving_pkg() { recving_pkg_len_ = false; }
-  inline void recving_pkg_len() { recving_pkg_len_ = true; }
-  inline char* recv_pkg_len_buf() {
-    return reinterpret_cast<char*>(&recv_pkg_len_);
-  }
-  inline size_t recv_pkg_len_buf_size() const { return sizeof(recv_pkg_len_); }
-  inline uint32_t recv_pkg_len() const { return recv_pkg_len_; }
-  void ntoh_body_len();
-
   void try_alloc_recv_buf();
   void get_buf(uv_buf_t& buf);
   void recved(ssize_t len);
@@ -76,12 +80,10 @@ class Client {
   static uint32_t _alloc_id_;
 
  protected:
-  uv_tcp_t tcp_;
   uint32_t id_;
   uint32_t backend_id_;
   EStatus status_;
-  uint32_t recv_pkg_len_;
-  bool recving_pkg_len_;
+  uv_tcp_t tcp_;
   recv_buf_t recv_buf_;
   res_queue_t res_queue_;
 };

@@ -32,7 +32,7 @@ uint32_t Client::recv_buf_t::dilatation() {
   else
     size = size_ * 1.75;
 
-  char *base = (char *)malloc(size);
+  char *base = new char[size];
   if (!base) return size_;
   memcpy(base, base_, used_);
   base_ = base;
@@ -52,20 +52,14 @@ int Client::init(uv_loop_t *loop) {
 }
 
 void Client::async_write() {
-  write_req_t *req = (write_req_t *)malloc(sizeof(write_req_t));
-  uint32_t buf_size = res_queue_.size();
-  req->bufs_ = (uv_buf_t *)malloc(sizeof(uv_buf_t) * buf_size);
-  req->bufs_size_ = buf_size;
-  for (uint32_t i = 0; i < buf_size; ++i) {
-    req->bufs_[i] = res_queue_.front();
-    res_queue_.pop();
-  }
+  write_req_t *req = new write_req_t(res_queue_);
   uv_write((uv_write_t *)req, native_uv<uv_stream_t>(), req->bufs_,
            req->bufs_size_, /*on_write*/ [](uv_write_t *req, int status) {
              if (status) {
                log_error("Write error %s\n", uv_strerror(status));
              }
-             Client::free_write_req(req);
+             auto wreq = reinterpret_cast<write_req_t>(req);
+             delete wreq;
            });
 }
 
@@ -110,7 +104,7 @@ void Client::set_backend_id(uint32_t backend_id) {
   log_trace("backend_id:%u", backend_id);
   backend_id_ = backend_id;
 }
-void Client::ntoh_body_len() { recv_pkg_len_ = ntohl(recv_pkg_len_); }
+
 void Client::try_alloc_recv_buf() {
   if (recv_buf_.is_full()) recv_buf_.dilatation();
 }

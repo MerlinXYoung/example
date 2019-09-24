@@ -6,6 +6,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED 11)
 
 set(CMAKE_CXX_FLAGS "-g -ggdb" )
+set(CMAKE_C_FLAGS "-g -ggdb" )
 
 include_directories(${PROJECT_SOURCE_DIR})
 
@@ -27,10 +28,10 @@ include_directories(${cppzmq_INCLUDE_DIR})
 # include_directories(${Zmq_INCLUDE_DIR})
 # link_directories(${Zmq_LIBRARY_DIR})
 
-set(Libuv_DIR /usr/local/libuv)
-find_package(Libuv REQUIRED)
+
+find_package(Libuv REQUIRED 7.10)
 include_directories(${Libuv_INCLUDE_DIR})
-link_directories(${Libuv_LIBRARY_DIR})
+
 
 find_package(CURL REQUIRED)
 include_directories(${CURL_INCLUDE_DIR})
@@ -52,6 +53,9 @@ find_package(Libgonet REQUIRED)
 include_directories(${Libgonet_INCLUDE_DIR})
 link_directories(${Libgonet_LIBRARY_DIR})
 
-add_subdirectory(uvcurlpp)
+include_directories(${PROJECT_SOURCE_DIR}/uvcurl)
+
+add_subdirectory(uvcurl)
+# add_subdirectory(uvcurlpp)
 add_subdirectory(gateway)
 add_subdirectory(tutorial)

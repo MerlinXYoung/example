@@ -2,7 +2,7 @@
 
 #include <uv.h>
 #include <curl/curl.h>
-#include <uvcurl/uvcurl.h>
+#include <uvcurl/Multi.hpp>
 
 #include "Acceptor.h"
 #include "BackendMgr.h"
@@ -38,8 +38,7 @@ int main(int args, char** argv)
     }
 
     //uvcurl::Multi multi;
-    g_multi.reset(new uvcurl::Multi);
-    g_multi->init(*loop);
+    g_multi = std::make_unique<uvcurl::Multi>(loop);
 
 
     return uv_run(loop, UV_RUN_DEFAULT);

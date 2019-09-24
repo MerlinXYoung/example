@@ -9,14 +9,14 @@ class QQAuth : public IAuth
     const char* qq_appid = "1106662470";
     const char* qq_appkey = "ZQMqEM5I4m5jx68q";
 
-    typedef struct qq_auth_context_s
+    struct qq_auth_context_t
     {
         uint32_t client_id_;
         CURL* curl_;
         std::string data_;
-        qq_auth_context_s(uint32_t client_id, CURL* curl):
+        qq_auth_context_t(uint32_t client_id, CURL* curl):
             client_id_(client_id),curl_(curl),data_(){}
-    }qq_auth_context_t;
+    };
 public:
     virtual int do_auth(uint32_t client_id, const char* openid, const char* appkey) override;
 };

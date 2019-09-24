@@ -13,4 +13,4 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 
 add_executable(gateway ${HEAD_FILES} ${SRC_FILES} ${PROTO_HDRS} ${PROTO_SRCS})
-target_link_libraries(gateway uvcurlpp uv curl libzmq protobuf)
+target_link_libraries(gateway uvcurl libuv curl libzmq protobuf)

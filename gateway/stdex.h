@@ -18,7 +18,15 @@ std::unique_ptr<T> make_unique(Args&&... args)
 #define NONE_COPYABLE(T) \
 T(const T&)=delete; \
 T& operator()(const T&)=delete
-
+#if 0
+#define Free(ptr) \
+do{ \
+    if(ptr){ \
+        free(ptr);\
+        ptr = nullptr; \
+    } \
+}while(0)
+#endif
 namespace std{
 template<class T>
 void bzero(T& t)
@@ -32,4 +40,5 @@ void bzero(T* p)
     bzero(p, sizeof(T));
 }
 }
+
 

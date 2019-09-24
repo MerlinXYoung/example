@@ -11,10 +11,11 @@ class Multi final
 {
 public:
     using done_cb_t = std::function<void(CURL*)> ;
+    using loop_ptr_t = std::unique_ptr<uv_loop, void(*)>
     using curlm_ptr = std::unique_ptr<CURLM,CURLMcode(*)(CURLM*)>;
     using done_cb_map_t = std::unordered_map<CURL*, done_cb_t>;
     Multi()=delete;
-    Multi(uv_loop_t* loop = uv_default_loop());
+    Multi(uv_loop_t* loop , bool owner);
     ~Multi();
     //int  init(uv_loop_t& loop);
     int async_preform(CURL* handle, done_cb_t done_cb);

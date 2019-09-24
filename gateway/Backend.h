@@ -3,8 +3,15 @@
 #include <zmq.hpp>
 #include <string>
 #include <unordered_map>
+#include "noncopyable.hpp"
 class Client;
-class Backend
+class IBackend:public noncopyable
+{
+public:
+    virtual void connect(uint32_t id, const std::string& url) = 0;
+    virtual void send(uint32_t client_id, const char* data, size_t size)=0;
+};
+class Backend: public IBackend
 {
 public:
     friend class BackendMgr;

@@ -1,29 +1,29 @@
+set(PKG_CONFIG_USE_CMAKE_PREFIX_PATH ON)
+find_package(PkgConfig)
+pkg_check_modules(PC_LIBUV QUIET libuv)
 
-find_path(Libuv_INCLUDE_DIR
-    uv.h
-    PATHS /usr/include /usr/local/include ${Libuv_DIR}/include
-)
+find_library(Libuv_LIBRARY NAMES libuv.so libuv.dylib libuv.dll
+    PATHS ${PC_LIBUV_LIBDIR} ${PC_LIBUV_LIBRARY_DIRS})
+find_library(Libuv_STATIC_LIBRARY NAMES libuv.a libuv_a.a libuv.dll.a
+    PATHS ${PC_LIBUV_LIBDIR} ${PC_LIBUV_LIBRARY_DIRS})
+message(STATUS "Libuv_LIBRARY:${Libuv_LIBRARY}")
 
-find_library(Libuv_LIBRARIES
-    uv
-    PATHS /usr/lib /usr/local/lib ${Libuv_DIR}/lib
+if( True 
+#NOT Libuv_LIBRARY and NOT Libuv_STATIC_LIBRARY 
 )
-message(STATUS "Libuv:${Libuv_INCLUDE_DIR} ${Libuv_LIBRARIES}")
-string(COMPARE NOTEQUAL "${Libuv_INCLUDE_DIR}"  "" Libuv_INCLUDE_DIR-NOTFOUND)
-string(COMPARE NOTEQUAL "${Libuv_LIBRARIES}"  "" Libuv_LIBRARIES-NOTFOUND)
-#message(STATUS "Libuv:${Libuv_INCLUDE_DIR-NOTFOUND} ${Libuv_LIBRARIES-NOTFOUND}")
-if(Libuv_INCLUDE_DIR-NOTFOUND)
-    message(WARNING "Libuv_INCLUDE_DIR-NOTFOUND")
-    set(Libuv-NOTFOUND ON)
-elseif(Libuv_LIBRARIES-NOTFOUND)
-    message(WARNING "Libuv_LIBRARIES-NOTFOUND")
-    set(Libuv-NOTFOUND ON)
-else()
     set(Libuv_FOUND ON)
-    string(REPLACE "/libuv.a" "" Libuv_LIBRARY_DIR ${Libuv_LIBRARIES})
-    string(COMPARE EQUAL ${Libuv_LIBRARY_DIR} ${Libuv_LIBRARIES} _EQUAL)
-    if(_EQUAL)
-    string(REPLACE "/libuv.so" "" Libuv_LIBRARY_DIR ${Libuv_LIBRARIES})
-    endif()
-    message(STATUS "Libuv_LIBRARY_DIR:${Libuv_LIBRARY_DIR}")
+    set(Libuv_VERSION ${PC_LIBUV_VERSION})
+    set(Libuv_INCLUDE_DIR ${PC_LIBUV_INCLUDE_DIRS})
 endif()
+
+if( TARGET libuv)
+    return()
+endif()
+
+add_library(libuv SHARED IMPORTED )
+set_property(TARGET libuv PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${PC_LIBUV_INCLUDE_DIRS})
+set_property(TARGET libuv PROPERTY IMPORTED_LOCATION ${Libuv_LIBRARY})
+
+add_library(libuv-static STATIC IMPORTED )
+set_property(TARGET libuv-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${PC_LIBUV_INCLUDE_DIRS})
+set_property(TARGET libuv-static PROPERTY IMPORTED_LOCATION ${Libuv_STATIC_LIBRARY})

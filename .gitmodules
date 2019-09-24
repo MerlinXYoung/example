@@ -1,0 +1,3 @@
+[submodule "uvcurl"]
+	path = uvcurl
+	url = https://github.com/MerlinXYoung/uvcurl.git

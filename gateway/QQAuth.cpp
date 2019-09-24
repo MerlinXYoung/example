@@ -1,7 +1,7 @@
 #include "QQAuth.h"
 #include <curl/curl.h>
 #include <sstream>
-#include <uvcurl/uvcurl.h>
+#include <uvcurl/Multi.hpp>
 #include <memory>
 #include <assert.h>
 #include "log.h"
@@ -9,6 +9,7 @@
 #include "Client.h"
 
 extern std::unique_ptr<uvcurl::Multi> g_multi;
+typedef size_t (*curl_writefunction_t)(char* ptr, size_t size, size_t nmemb, void* userdata);
 int QQAuth::do_auth(uint32_t client_id, const char* openid, const char* appkey) 
 {
     time_t now = time(NULL);
@@ -18,9 +19,10 @@ int QQAuth::do_auth(uint32_t client_id, const char* openid, const char* appkey)
     ss<<qq_auth_url<<"?timestamp="<<now<<"&appid="<<qq_appid<<"&sig="<<sig<<"&openid="<<openid<<"&openkey="<<appkey;//<<"&userip"
     std::string url = ss.str();
     CURL *handle = curl_easy_init();
-    qq_auth_context_t* context = uvcurl_malloc(qq_auth_context_t);
-    new(context) qq_auth_context_t(client_id, handle);
-    curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, [](char *ptr, size_t size, size_t nmemb, void *userdata)->size_t{
+
+    auto context = new qq_auth_context_t(client_id, handle);
+    curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, (curl_writefunction_t)[](char *ptr, size_t size, size_t nmemb, void *userdata)->size_t{
+        log_trace("ptr[%p] size[%lu] nmemb[%lu] data[%p]", ptr, size, nmemb, userdata);
         size_t xSize = size*nmemb;
         std::string * pStr = reinterpret_cast<std::string*>(userdata);
         if ( pStr )
@@ -34,6 +36,7 @@ int QQAuth::do_auth(uint32_t client_id, const char* openid, const char* appkey)
     //curl_multi_add_handle(curl_handle, handle);
     g_multi->async_preform(handle, [context](CURL* curl){
         assert(curl == context->curl_);
+        std::unique_ptr<qq_auth_context_t> guard(context);
         long res_code =0; 
         char *done_url;
         curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL,
