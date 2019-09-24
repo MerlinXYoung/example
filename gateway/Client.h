@@ -2,6 +2,7 @@
 
 #include <uv.h>
 #include <queue>
+#include "Buffer.h"
 
 class Client {
   public:
@@ -13,43 +14,10 @@ class Client {
     };
   friend class ClientMgr;
   using res_queue_t = std::queue<uv_buf_t>;
+  //using recv_buf_t = std::vector<char>;
+  using recv_buf_t = Buffer<char>;
  private:
-  struct write_req_t{
-    uv_write_t req_;
-    uint32_t bufs_size_;
-    uv_buf_t* bufs_;
-    write_req_t():req_{},bufs_size_(0),bufs_(nullptr){}
-    write_req_t(res_queue_t& res_queue):req_{},bufs_size_(static_cast<uint32_t>(res_queue.size())),bufs_(nullptr)
-    {
-      bufs_ = new uv_buf_t[bufs_size_];
-      for (uint32_t i = 0; i < bufs_size_; ++i) {
-        bufs_[i] = res_queue.front();
-        res_queue.pop();
-      }
-
-    }
-
-  };
-
-  static void free_write_req(uv_write_t* req);
-
-  struct recv_buf_t {
-    char* base_;
-    uint32_t used_;
-    uint32_t size_;
-    recv_buf_t():base_(nullptr),used_(0),size_(0){}
-    ~recv_buf_t(){
-       delete [] base_;
-    }
-    bool is_full() const { return size_ == used_; }
-    bool is_empty() const { return size_ == 0; }
-    uint32_t remainder() const { return size_ - used_; }
-    void use(ssize_t len) { used_ += len; }
-    uint32_t get_used() const { return used_; }
-    char* curr() { return base_ + used_; }
-    uint32_t dilatation();
-  };
-
+  
  public:
 
   Client():id_(alloc_id()),backend_id_(0),status_(EStatus::New),tcp_{} {
@@ -71,7 +39,6 @@ class Client {
 
   void auth_cb(int status);
 
-  void try_alloc_recv_buf();
   void get_buf(uv_buf_t& buf);
   void recved(ssize_t len);
 

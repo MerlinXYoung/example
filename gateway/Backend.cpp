@@ -18,8 +18,8 @@ std::string Backend::set_id(uint32_t id) {
   return ss.str();
 }
 void Backend::send(uint32_t client_id, const char* data, size_t size) {
-  zsocket_.send((void*)&client_id, sizeof(client_id), ZMQ_SNDMORE);
-  zsocket_.send(data, size);
+  zsocket_.send(zmq::message_t((void*)&client_id, sizeof(client_id)), ZMQ_SNDMORE);
+  zsocket_.send(zmq::message_t(data, size));
 }
 #if 0
 void Backend::recv()
@@ -76,7 +76,7 @@ Client* Backend::recv() {
     int more = 0;
     uv_buf_t buf = {0};
     zmq::message_t message_client;
-    zsocket_.recv(&message_client);
+    zsocket_.recv(message_client);
     size_t more_size = sizeof(more);
     zsocket_.getsockopt(ZMQ_RCVMORE, &more, &more_size);
     int size = message_client.size();
@@ -89,7 +89,7 @@ Client* Backend::recv() {
     uint32_t client_id = *reinterpret_cast<uint32_t*>(
         message_client.data());  // atol(str_client_id.c_str());
     zmq::message_t message;
-    zsocket_.recv(&message);
+    zsocket_.recv(message);
     size = message.size();
     buf.base = (char*)malloc(size + sizeof(uint32_t));
     buf.len = size + sizeof(uint32_t);

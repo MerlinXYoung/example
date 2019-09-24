@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED 11)
 
-set(CMAKE_CXX_FLAGS "-g -ggdb" )
+set(CMAKE_CXX_FLAGS "-g -ggdb -Wdeprecated-declarations" )
 set(CMAKE_C_FLAGS "-g -ggdb" )
 
 include_directories(${PROJECT_SOURCE_DIR})
