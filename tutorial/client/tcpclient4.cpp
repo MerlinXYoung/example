@@ -12,6 +12,8 @@ using namespace network;
 // @data 收到的数据起始指针
 // @bytes 收到的数据长度
 // @returns: 返回一个size_t, 表示已处理的数据长度. 当返回-1时表示数据错误, 链接即会被关闭.
+
+
 size_t OnMessage(SessionEntry sess, const char* data, size_t bytes)
 {
     printf("receive: %lu\n", bytes);
@@ -24,6 +26,7 @@ size_t OnMessage(SessionEntry sess, const char* data, size_t bytes)
 
         printf("receive pkg_len: %u\n", len);
         printf("receive: %.*s\n", (int)len, curr);
+        printf("please entry:\n");
         curr +=len;
     }while(curr != end);
 
