@@ -119,6 +119,7 @@ void Client::recved(ssize_t len) {
   char *curr = recv_buf_.data();
   char *curr_base = recv_buf_.data();
   uint32_t buf_len = recv_buf_.len();
+  log_trace("data[%p] len[%u]", curr, buf_len);
   gw::cs::ReqParser parser;
   do {
     int64_t full_pkg_len = parser.check(curr, buf_len);

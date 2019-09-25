@@ -22,14 +22,14 @@ int64_t ReqParser::check(char* base, uint32_t len)
     
     pkg_ = base;
     pkg_len_ = body_len;
-    char buf[1024];
-    char *curr = buf;
-    for(int i=0;i<body_len-sizeof(uint16_t);++i)
-    {
-        size_t n = sprintf(curr, "%2X ", static_cast<int>(*(pkg_+sizeof(uint16_t)+i)));
-        curr+=n;
-    }
-    log_trace("%s",buf); 
+    // char buf[1024];
+    // char *curr = buf;
+    // for(int i=0;i<body_len-sizeof(uint16_t);++i)
+    // {
+    //     size_t n = sprintf(curr, "%2X ", static_cast<int>(*(pkg_+sizeof(uint16_t)+i)));
+    //     curr+=n;
+    // }
+    // log_trace("%s",buf); 
 
 
     return body_len+sizeof(uint32_t);
