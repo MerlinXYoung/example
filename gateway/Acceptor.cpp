@@ -28,8 +28,10 @@ int Acceptor::listen(const char* ip, int port)
         log_trace("");
         client->init(server->loop);
         log_trace("");
-        client->set_backend_id(BackendMgr::instance().Get()->id());
+        auto backend = BackendMgr::instance().Get();
+        client->set_backend_id(backend->id());
         log_trace("");
+        backend->send_client_new(*client);
         if (uv_accept(server, client->native_uv<uv_stream_t>()) == 0) {
             log_trace("accept new client[%u]\n", client->id());
             client->async_read();

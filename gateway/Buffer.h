@@ -51,18 +51,24 @@ public:
     }
     void tidy(size_t len)
     {
-        size_t size=len<128?128:len;
+        if(len == len_)
+        {    
+            len_ = 0;
+            return;
+        }
+        size_t r = len_ - len;
+        size_t size=r<128?128:r;
         value_ptr ptr(new T_[size]);
         assert(ptr);
         memcpy(ptr.get(), ptr_.get(), len_);
         std::swap(ptr, ptr_);
         size_ = size;
-        len_ = len;
+        len_ = r;
     }
 private:
     void expand()
     {
-        size_t size = size_*1.73;
+        size_t size = size_==0?128:size_*1.73;
         value_ptr ptr(new T_[size]);
         assert(ptr);
         memcpy(ptr.get(), ptr_.get(), len_);

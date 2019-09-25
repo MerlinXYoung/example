@@ -20,7 +20,7 @@ class Client {
   
  public:
 
-  Client():id_(alloc_id()),backend_id_(0),status_(EStatus::New),tcp_{} {
+  Client():id_(alloc_id()),backend_id_(0),uid_(0),status_(EStatus::New),tcp_{},recv_buf_(),res_queue_()  {
 
   }
   int init(uv_loop_t* loop);
@@ -31,8 +31,15 @@ class Client {
   }
   inline uint32_t id() const { return id_; }
   inline uint32_t backend_id() const { return backend_id_; }
-  void set_backend_id(uint32_t backend_id);
-  void async_write(uv_buf_t buf) { res_queue_.push(buf); }
+  inline void set_backend_id(uint32_t backend_id){
+    backend_id_ = backend_id;
+  }
+  inline void set_uid(uint64_t uid)
+  {
+    uid_ = uid;
+  }
+  inline uint64_t uid()const{return uid_;}
+  inline void async_write(uv_buf_t buf) { res_queue_.push(buf); }
   void async_write();
   int async_read();
   void async_close();
@@ -49,6 +56,7 @@ class Client {
  protected:
   uint32_t id_;
   uint32_t backend_id_;
+  uint64_t uid_;
   EStatus status_;
   uv_tcp_t tcp_;
   recv_buf_t recv_buf_;

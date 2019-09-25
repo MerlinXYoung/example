@@ -1,11 +1,9 @@
 #pragma once
-#include "../../build/gateway/cs_gateway.pb.h"
-#include <stdint.h>
+#include "../../build/gateway/ss_gateway.pb.h"
 namespace gw
 {
-namespace cs
+namespace ss
 {
-
 class ReqParser
 {
 public:
@@ -20,21 +18,10 @@ public:
     }
     inline char* pkg(){return pkg_;}
     inline uint32_t pkg_len()const{return pkg_len_;}
-    inline uint32_t body_len()const{return pkg_len_ - sizeof(uint16_t) -head_len_;}
-    inline char* body(){return pkg_+sizeof(uint16_t)+head_len_;}
 
 private:
     char* pkg_;
     uint32_t pkg_len_;
-    uint64_t head_len_;
-    //uint32_t body_len_;
-
 };
-
-class ReqPacker
-{
-
-};
-
 }
 }

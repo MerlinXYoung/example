@@ -1,9 +1,8 @@
-#include <cs_gateway_utility.h>
-#include <arpa/inet.h>
+#include <ss_gateway_utility.h>
 #include "../log.h"
 namespace gw
 {
-namespace cs
+namespace ss
 {
 
 
@@ -13,7 +12,7 @@ int64_t ReqParser::check(char* base, uint32_t len)
     if(len< sizeof(uint32_t))
         return 0 ;
     
-    body_len = ntohl(*reinterpret_cast<uint32_t*>(base));
+    body_len = *reinterpret_cast<uint32_t*>(base);
     base += sizeof(uint32_t);
     len -= sizeof(uint32_t);
 
@@ -36,21 +35,18 @@ int64_t ReqParser::check(char* base, uint32_t len)
 }
 EMsgID ReqParser::parse(Head& head, google::protobuf::Message*& msg)
 {
-    msg = nullptr;
-
+    uint16_t head_len = 0; 
     if(pkg_len_< sizeof(uint16_t))
         return EMsgID::Invalid ;
-    head_len_ = ntohs(*reinterpret_cast<uint16_t*>(pkg_));
+    head_len = *reinterpret_cast<uint16_t*>(pkg_);
     char* curr = pkg_+sizeof(uint16_t);
-    if(!head.ParseFromArray(curr, head_len_))
+    if(!head.ParseFromArray(curr, head_len))
         return EMsgID::Invalid;
-    curr+=head_len_;
-    if(EMsgID::Other == head.msgid())
-        return head.msgid();
-    if(EMsgID::Auth == head.msgid())
-        msg = new gw::cs::AuthReq;
-    if(!msg->ParseFromArray(curr, pkg_len_ - head_len_ -sizeof(uint16_t)))
-        return EMsgID::Invalid;
+    curr+=head_len;
+    // if(EMsgID::Auth == head.msgid())
+    //     msg = new gw::cs::AuthReq;
+    // if(!msg->ParseFromArray(curr, pkg_len_ - head_len -sizeof(uint16_t)))
+    //     return EMsgID::Invalid;
     return head.msgid();
     
 }

@@ -5,6 +5,7 @@
 #include "Client.h"
 #include "ClientMgr.h"
 #include "log.h"
+#include "../build/gateway/ss_gateway.pb.h"
 
 void Backend::connect(uint32_t id, const std::string& url) {
   id_ = id;
@@ -17,60 +18,61 @@ std::string Backend::set_id(uint32_t id) {
   zsocket_.setsockopt(ZMQ_IDENTITY, ss.str().c_str(), ss.str().length());
   return ss.str();
 }
-void Backend::send(uint32_t client_id, const char* data, size_t size) {
-  zsocket_.send(zmq::message_t((void*)&client_id, sizeof(client_id)), ZMQ_SNDMORE);
-  zsocket_.send(zmq::message_t(data, size));
+void Backend::send(const gw::ss::Head& head, const char* data, size_t size) {
+  //zsocket_.send(zmq::message_t((void*)&client_id, sizeof(client_id)), ZMQ_SNDMORE);
+  std::string strHead;
+  head.SerializePartialToString(&strHead);
+  if(size>0)
+  {
+    zsocket_.send(zmq::message_t(strHead.data(), strHead.size()), ZMQ_SNDMORE); 
+    zsocket_.send(zmq::message_t(data, size));
+  }
+  else
+    zsocket_.send(zmq::message_t(strHead.data(), strHead.size())); 
 }
-#if 0
-void Backend::recv()
+
+void Backend::send(Client& client, gw::ss::EMsgID msgid, const char* data, size_t size) {
+  gw::ss::Head head;
+  head.set_msgid(msgid);
+  head.set_client_id(client.id());
+  head.set_uid(client.uid());
+  this->send( head, data, size);
+
+}
+
+void Backend::send_client_new(Client& client)
 {
-    
-    zmq::pollitem_t items[] = {
-        { static_cast<void*>(zsocket_), 0, ZMQ_POLLIN, 0 } 
-    };
-    try {
-        std::unordered_set<Client*> clients;
-        for (int i = 0; i < recv_cnt; ++i) {
-            // 10 milliseconds
-            zmq::poll(items, 1, 0);
-            if (items[0].revents & ZMQ_POLLIN) {
-                // log_trace("\n%s ", identity);
-                // s_dump(client_socket_);
-                uv_buf_t buf;
-                zmq::message_t message;
-                zsocket_.recv(&message);
-                int size = message.size();
-                std::string str_client_id(static_cast<char*>(message.data()), sizeof(uint32_t));
-                uint32_t client_id = atol(str_client_id.c_str());
-                buf.base = (char*)malloc(size-sizeof(uint32_t));
-                buf.len = size-sizeof(uint32_t);
-                memcpy(buf.base, message.data()+sizeof(uint32_t), buf.len);
-                
-                std::string data(static_cast<char*>(message.data()+sizeof(uint32_t)), size-sizeof(uint32_t));
-                log_trace("msg[%u]:%s\n", client_id, data.c_str());
-                auto client = ClientMgr::instance().Get(client_id);
-                if(client)
-                {
-                    client->async_write(buf);
-                    clients.insert(client);
-                }
+  log_trace("client id[%u]", client.id());
+  gw::ss::ClientNewReq req;
+  std::string strReq;
+  req.SerializePartialToString (&strReq);
+  this->send(client, gw::ss::EMsgID::ClientNew, strReq.data(), strReq.length() );
 
-            }
-            else
-            {
-                break;
-            }
-        }
-        for( auto cli : clients)
-        {
-            cli->async_write();
-        }
-
-    }
-    catch (std::exception &e) {}
-    
 }
-#else
+void Backend::send_client_auth(Client& client, const char* openid, const char* openkey )
+{
+  log_trace("client id[%u]", client.id());
+  gw::ss::ClientAuthReq req;
+  req.set_openid(openid);
+  req.set_openkey(openkey);
+  std::string strReq;
+  req.SerializePartialToString (&strReq);
+  this->send(client, gw::ss::EMsgID::ClientAuth, strReq.data(), strReq.length() );
+}
+void Backend::send_client_close(Client& client)
+{
+  log_trace("client id[%u]", client.id());
+  gw::ss::ClientCloseReq req;
+  std::string strReq;
+  req.SerializePartialToString (&strReq);
+  this->send(client, gw::ss::EMsgID::ClientAuth, strReq.data(), strReq.length() );
+}
+
+void Backend::send_client_other(Client& client, const char* data, size_t size)
+{
+  this->send(client, gw::ss::EMsgID::Other, data, size );
+}
+
 Client* Backend::recv() {
   try {
     int more = 0;
@@ -108,4 +110,3 @@ Client* Backend::recv() {
   }
   return nullptr;
 }
-#endif

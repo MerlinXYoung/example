@@ -99,17 +99,30 @@ int main()
 
             while(true)
             {
+                head.set_msgid(gw::cs::Other);
+                curr_len = sizeof(buf) - sizeof(uint32_t) - sizeof(uint16_t);
+                curr = buf+sizeof(uint32_t) +sizeof(uint16_t);
+                if(!head.SerializePartialToArray(curr, curr_len))
+                    printf("fuck serialize head\n");
+                uint16_t hlen = head.GetCachedSize();
+                head_len = htons(hlen);
+                
+                curr+= hlen;
+                curr_len -= hlen;
+
                 printf("please entry:\n");
-                scanf("%s",buf);
-                if(strcmp(buf,"exit")==0)
+                scanf("%s",curr);
+                if(strcmp(curr,"exit")==0)
                     break;
                 
-                uint32_t len = strlen(buf);
-                uint32_t nlen = htonl(len);
-                client.Send(&nlen, sizeof(nlen), [](boost_ec ec) {
-                            printf("send len ec:%s\n", ec.message().c_str());
-                        });
-                client.Send((void*)buf, len, [](boost_ec ec) {
+                size_t body_len = strlen(curr);
+                curr+= body_len;
+                curr_len -= body_len;
+                pkg_len = htonl(sizeof(uint16_t)+hlen+body_len);
+                printf("pkg_len[%lu] hlen[%u] body_len[%lu] body[%s]\n", sizeof(uint16_t)+hlen+body_len,
+                    hlen, body_len, curr-body_len );
+                
+                client.Send((void*)buf, curr-buf, [](boost_ec ec) {
                             printf("send ec:%s\n", ec.message().c_str());
                         });
             }

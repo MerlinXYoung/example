@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <memory>
 #include <vector>
+#include <zmq.hpp>
 class Backend;
 class BackendMgr final
 {
@@ -21,10 +22,11 @@ public:
     void recv();
 
 private:
-    BackendMgr():recv_cnt_(1000){};
+    BackendMgr():ctx_(1),recv_cnt_(1000){};
     ~BackendMgr()=default;
     NONE_COPYABLE(BackendMgr);
 private:
+    zmq::context_t ctx_;
     uint32_t recv_cnt_;
     backend_map_t backends_;
     backend_array_t backends_array_;

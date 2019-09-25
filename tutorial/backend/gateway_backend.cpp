@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include <zmq.hpp>
+#include "../../build/gateway/ss_gateway.pb.h"
 
 using namespace std;
 
@@ -20,34 +21,69 @@ int main(int argc, char** argv)
             if (items[0].revents & ZMQ_POLLIN) {
                 // printf("\n%s ", identity);
                 // s_dump(client_socket_);
-                zmq::message_t message_client;
-                server.recv(&message_client);
-                int size = message_client.size();
+                zmq::message_t message_head;
+                server.recv(message_head);
+                int size = message_head.size();
+                gw::ss::Head head;
+                if(!head.ParseFromArray(message_head.data(), message_head.size()))
+                {
+                    printf("parse head error");
+                    break;
+                }
+                printf("msgid[%d] client[%u] uid[%lu]\n", head.msgid(), head.client_id(), head.uid());
+
                 int more = 0;
                 size_t more_size = sizeof (more);
                 server.getsockopt(ZMQ_RCVMORE, &more, &more_size);
-                if(!more || size != sizeof(uint32_t))
+                
+                if(more)
                 {
-                    printf("fuck message not more or  not client id\n");
-                    continue;
+                    zmq::message_t message;
+                    server.recv(message);
+                    size = message.size();
+                    std::unique_ptr<google::protobuf::Message> body;
+                    switch(head.msgid()){
+                    case gw::ss::EMsgID::ClientNew:
+                        body.reset(new gw::ss::ClientNewReq);
+                        break;
+                    case gw::ss::EMsgID::ClientAuth:
+                        body.reset(new gw::ss::ClientAuthReq);
+                        break;
+                    case gw::ss::EMsgID::ClientClose:
+                        body.reset(new gw::ss::ClientCloseReq);
+                        break;
+                    case gw::ss::EMsgID::Other:
+                        break;
+                    default:
+                        break;
+                    }
+                    if(body)
+                    {
+                        if(!body->ParseFromArray(message.data(), message.size()))
+                        {
+                            printf("fuck parse body error\n");
+                            break;
+                        }
+                        printf("body[%s]\n",body->DebugString().c_str());
+                    }
+                    else
+                    {
+                        std::string data(reinterpret_cast<char*>(message.data()), size);
+                        printf("msg:%s\n",  data.c_str());
+                        std::string rsp = data +" rsp!";
+                        std::string notify1("notify1");
+                        std::string notify2("notify2");
+                        uint32_t client_id = head.client_id();
+                        server.send(&client_id, sizeof(client_id), ZMQ_SNDMORE);                
+                        server.send(notify1.data(), notify1.size());
+                        server.send(&client_id, sizeof(client_id), ZMQ_SNDMORE);                                
+                        server.send(notify2.data(), notify2.size());
+                        server.send(&client_id, sizeof(client_id), ZMQ_SNDMORE);
+                        server.send(rsp.data(), rsp.size());
+                        server.send(&client_id, sizeof(client_id), ZMQ_SNDMORE);                                                
+                        server.send(notify2.data(), notify2.size());
+                    }
                 }
-                uint32_t client_id = *reinterpret_cast<uint32_t*>(message_client.data());//atol(str_client_id.c_str());
-                zmq::message_t message;
-                server.recv(&message);
-                size = message.size();
-                std::string data(reinterpret_cast<char*>(message.data()), size);
-                printf("msg[%u]:%s\n", client_id, data.c_str());
-                std::string rsp = data +" rsp!";
-                std::string notify1("notify1");
-                std::string notify2("notify2");
-                server.send(&client_id, sizeof(client_id), ZMQ_SNDMORE);                
-                server.send(notify1.data(), notify1.size());
-                server.send(&client_id, sizeof(client_id), ZMQ_SNDMORE);                                
-                server.send(notify2.data(), notify2.size());
-                server.send(&client_id, sizeof(client_id), ZMQ_SNDMORE);
-                server.send(rsp.data(), rsp.size());
-                server.send(&client_id, sizeof(client_id), ZMQ_SNDMORE);                                                
-                server.send(notify2.data(), notify2.size());
 
             }
         }
