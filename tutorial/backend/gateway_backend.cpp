@@ -7,9 +7,10 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
+    string port = argc > 1?argv[1]:"20802";
     zmq::context_t ctx(1);
     zmq::socket_t server(ctx, ZMQ_DEALER);
-    server.bind("tcp://127.0.0.1:20802");
+    server.bind("tcp://127.0.0.1:"+port);
 
     zmq::pollitem_t items[] = {
             { static_cast<void*>(server), 0, ZMQ_POLLIN, 0 } 
@@ -35,7 +36,7 @@ int main(int argc, char** argv)
                 int more = 0;
                 size_t more_size = sizeof (more);
                 server.getsockopt(ZMQ_RCVMORE, &more, &more_size);
-                
+                printf("more:%d\n", more);
                 if(more)
                 {
                     zmq::message_t message;
@@ -73,14 +74,16 @@ int main(int argc, char** argv)
                         std::string rsp = data +" rsp!";
                         std::string notify1("notify1");
                         std::string notify2("notify2");
-                        uint32_t client_id = head.client_id();
-                        server.send(&client_id, sizeof(client_id), ZMQ_SNDMORE);                
+                        //uint32_t client_id = head.client_id();
+                        std::string strHead;
+                        head.SerializePartialToString(&strHead);
+                        server.send(strHead.data(), strHead.size(), ZMQ_SNDMORE);                
                         server.send(notify1.data(), notify1.size());
-                        server.send(&client_id, sizeof(client_id), ZMQ_SNDMORE);                                
+                        server.send(strHead.data(), strHead.size(), ZMQ_SNDMORE);                                
                         server.send(notify2.data(), notify2.size());
-                        server.send(&client_id, sizeof(client_id), ZMQ_SNDMORE);
+                        server.send(strHead.data(), strHead.size(), ZMQ_SNDMORE);
                         server.send(rsp.data(), rsp.size());
-                        server.send(&client_id, sizeof(client_id), ZMQ_SNDMORE);                                                
+                        server.send(strHead.data(), strHead.size(), ZMQ_SNDMORE);                                                
                         server.send(notify2.data(), notify2.size());
                     }
                 }

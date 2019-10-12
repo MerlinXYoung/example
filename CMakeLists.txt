@@ -16,17 +16,22 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
 
 set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} /usr/local/libzmq /usr/local/cppzmq)
 
-find_package(ZeroMQ REQUIRED)
-include_directories(${ZeroMQ_INCLUDE_DIR})
-link_directories(${ZeroMQ_LIBRARY_DIR})
+#find_package(ZeroMQ REQUIRED)
+#include_directories(${ZeroMQ_INCLUDE_DIR})
+#link_directories(${ZeroMQ_LIBRARY_DIR})
+
+set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} /usr/local/openssl)
+find_package(OpenSSL REQUIRED)
+include_directories(${OPENSSL_INCLUDE_DIR})
+
 
 find_package(cppzmq REQUIRED)
 include_directories(${cppzmq_INCLUDE_DIR})
 
-# set(Zmq_DIR /usr/local/zeromq)
-# find_package(Zmq REQUIRED)
-# include_directories(${Zmq_INCLUDE_DIR})
-# link_directories(${Zmq_LIBRARY_DIR})
+ set(Zmq_DIR /usr/local/libzmq)
+ find_package(Zmq REQUIRED)
+ include_directories(${Zmq_INCLUDE_DIR})
+ link_directories(${Zmq_LIBRARY_DIR})
 
 
 find_package(Libuv REQUIRED 7.10)
