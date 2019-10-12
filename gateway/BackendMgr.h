@@ -5,14 +5,18 @@
 #include <memory>
 #include <vector>
 #include <zmq.hpp>
-class Backend;
-class BackendMgr final
+#include <boost/serialization/singleton.hpp>
+
+#include "Backend.h"
+class BackendMgr :public boost::serialization::singleton<BackendMgr>
 {
 public:
-    using backend_ptr = std::shared_ptr<Backend>;
+    
+    using backend_ptr = Backend::pointer;
     using backend_map_t = std::unordered_map<uint32_t, backend_ptr>;
     using backend_array_t = std::vector<backend_ptr>;
-    static BackendMgr& instance();
+    //friend class boost::serialization::detail::singleton_wrapper<BackendMgr>;
+    //static BackendMgr& instance();
 
     backend_ptr Alloc(uint32_t id, const std::string& url);
     backend_ptr Get(uint32_t id);
@@ -21,10 +25,10 @@ public:
     
     void recv();
 
-private:
+protected:
     BackendMgr():ctx_(1),recv_cnt_(1000){};
     ~BackendMgr()=default;
-    NONE_COPYABLE(BackendMgr);
+    // NONE_COPYABLE(BackendMgr);
 private:
     zmq::context_t ctx_;
     uint32_t recv_cnt_;

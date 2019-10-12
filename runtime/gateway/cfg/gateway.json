@@ -1,0 +1,10 @@
+{
+    "listen" : {
+        "protocol" : "TCP",
+        "ip" : "localhost",
+        "port" : 20801
+    },
+    "backends" : [
+        { "id" : 1357, "uri" : "tcp://localhost:20802" }
+    ]
+}

@@ -1,3 +1,7 @@
 [submodule "uvcurl"]
 	path = uvcurl
 	url = https://github.com/MerlinXYoung/uvcurl.git
+
+[submodule "pb2jsonpp"]
+	path = pb2jsonpp
+	url = https://github.com/MerlinXYoung/pb2jsonpp.git

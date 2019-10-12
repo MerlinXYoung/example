@@ -8,9 +8,10 @@
 #include "protocol/cs_gateway_utility.h"
 #include "log.h"
 #include "stdex.h"
+#include <stdexcept>
 
 using namespace std;
-
+#define CLIENT_UV_BUF_SIZE (1024)
 struct write_req_t{
     uv_write_t req_;
     vector<uv_buf_t> bufs_;
@@ -29,17 +30,34 @@ struct write_req_t{
     }
     ~write_req_t() = default;
   };
-
+static void _uv_tcp_close(uv_tcp_t* tcp)
+{
+  if(nullptr != tcp)
+    return;
+  if(tcp->loop)
+  {
+    uv_close(reinterpret_cast<uv_handle_t*>(tcp),[](uv_handle_t* handle){
+      free(handle);
+    });
+  }
+  else{
+    free(tcp);
+  }
+}
 uint32_t Client::_alloc_id_ = 0;
+Client::Client(uv_loop_t* loop):id_(alloc_id()),backend_id_(0),uid_(0),status_(EStatus::New),
+  tcp_ptr_(new uv_tcp_t,_uv_tcp_close),/*recv_buf_(),*/pkg_len_(0),curr_pkg_(),res_queue_()  {
 
-int Client::init(uv_loop_t *loop) {
-  int ires = uv_tcp_init(loop, &tcp_);
-  if (ires != 0) return ires;
-  tcp_.data = this;
+  int ires = uv_tcp_init(loop, tcp_ptr_.get());
+  if (ires != 0) throw std::runtime_error("uv_tcp_init error!");
+  tcp_ptr_->data = this;
 
-  status_ = EStatus::Inited;
+  status_ = EStatus::New;
+}
 
-  return 0;
+Client::~Client()
+{
+
 }
 
 void Client::async_write() {
@@ -57,16 +75,21 @@ void Client::async_write() {
 int Client::async_read() {
   return uv_read_start(native_uv<uv_stream_t>(), 
     [](uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
-        Client *client = reinterpret_cast<Client *>(handle->data);
-        client->get_buf(*buf);
-        log_trace("buf[%p] data[%p] len[%lu]", buf, buf->base, buf->len);
+        // auto client = reinterpret_cast<Client *>(handle->data)->shared_from_this();
+        // client->get_buf(*buf);
+        // log_trace("buf[%p] data[%p] len[%lu]", buf, buf->base, buf->len);
+        buf->base = new char[CLIENT_UV_BUF_SIZE];//reinterpret_cast<char*>(malloc(CLIENT_UV_BUF_SIZE));
+        buf->len = CLIENT_UV_BUF_SIZE;
     }, 
     [](uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
         log_trace("handle[%p] nread[%ld] buf[%p] data[%p] len[%lu]", handle, nread, buf, buf->base, buf->len);
-        Client *client = reinterpret_cast<Client *>(handle->data);
+        // auto _guard = std::make_unique(buf->base, free);
+        std::unique_ptr<char[]> _guard(buf->base);
+        auto client = reinterpret_cast<Client *>(handle->data)->shared_from_this();
         if (nread > 0) {
-            client->recved(nread);
-            return;
+          
+          client->recved(buf->base, nread);
+          return;
         } else if (nread < 0) {
             switch (nread) {
             case UV_EOF:
@@ -76,7 +99,7 @@ int Client::async_read() {
                 break;
             default:
                 log_error("Read error %s\n", uv_err_name(nread));
-                client->async_close();
+                ClientMgr::get_mutable_instance().Free(client->id());
                 break;
             }
         } else {
@@ -84,12 +107,12 @@ int Client::async_read() {
         }
     });
 }
-void Client::async_close() {
-  uv_close(native_uv<uv_handle_t>(), [](uv_handle_t *handle) {
-    Client *client = reinterpret_cast<Client *>(handle->data);
-    ClientMgr::instance().Free(client->id());
-  });
-}
+// void Client::async_close() {
+//   uv_close(native_uv<uv_handle_t>(), [](uv_handle_t *handle) {
+//     auto client = reinterpret_cast<Client *>(handle->data)->shared_from_this();
+//     ClientMgr::get_mutable_instance().Free(client->id());
+//   });
+// }
 
 // void Client::set_backend_id(uint32_t backend_id) {
 //   log_trace("backend_id:%u", backend_id);
@@ -97,69 +120,65 @@ void Client::async_close() {
 // }
 
 
-void Client::get_buf(uv_buf_t &buf) {
-  recv_buf_.get(buf);
-}
+// void Client::get_buf(uv_buf_t &buf) {
+//   recv_buf_.get(buf);
+// }
 void Client::auth_cb(int status) {
   log_trace("auth status[%d]", status);
   if (0 != status) 
   {
-    async_close();
+    //async_close();
+    ClientMgr::get_mutable_instance().Free(id());
+    return ;
   }
   status_ = EStatus::Authed;
   set_uid(rand());
-  BackendMgr::instance().Get(backend_id())->send_client_auth(*this, "openid", "openkey");
+  BackendMgr::get_mutable_instance().Get(backend_id())->send_client_auth(*this, "openid", "openkey");
     
 }
 
-
-void Client::recved(ssize_t len) {
-  log_trace("recved[%lu]", len)
-  recv_buf_.use(len);
-  char *curr = recv_buf_.data();
-  char *curr_base = recv_buf_.data();
-  uint32_t buf_len = recv_buf_.len();
-  log_trace("data[%p] len[%u]", curr, buf_len);
-  gw::cs::ReqParser parser;
-  do {
-    int64_t full_pkg_len = parser.check(curr, buf_len);
-    if (full_pkg_len == 0) break;
-    if (full_pkg_len < 0) {
-      async_close();
-      break;
-    }
-    google::protobuf::Message *message;
-    gw::cs::Head head;
-    gw::cs::EMsgID msgid = parser.parse(head, message);
-    if (gw::cs::EMsgID::Invalid == msgid) {
-      async_close();
-      break;
-    }
-    if (gw::cs::EMsgID::Other == msgid)
-    {
-      if(status_ != EStatus::Authed)
-      {
-        async_close();
-        break;
-      }
-      log_trace("body[%.*s],",parser.body_len(), parser.body() );
-      BackendMgr::instance()
-          .Get(backend_id())
-          ->send_client_other(*this, parser.body(), parser.body_len());
-    }
-    else {
-      cshandler.doProcess(id_, head, *message);
-    }
-    delete message;
-
-    curr += full_pkg_len;
-    buf_len -= full_pkg_len;
-    curr_base = curr;
-  } while (buf_len > 0);
-
-  if (curr_base != recv_buf_.data() ) {
-    recv_buf_.tidy(recv_buf_.len()-buf_len);
+void Client::recv_pkg_len(const char*& data, uint32_t& len)
+{
+  uint32_t space = sizeof(uint32_t) -curr_pkg_.size();
+  if(space <= len)
+  {
+    curr_pkg_.insert(curr_pkg_.end(), data, data+space);
+    pkg_len_ = ntohl(*reinterpret_cast<uint32_t*>(curr_pkg_.data()));
+    log_trace("pkg_len:%u", pkg_len_);
+    curr_pkg_.clear();
+    data += space;
+    len -= space;
   }
-  
+  else 
+  {
+    curr_pkg_.insert(curr_pkg_.end(), data, data+len);
+    data += len;
+    len = 0;
+  }
+}
+void Client::recved(const char* data, uint32_t len) {
+  const char* curr = data;
+  do{
+    if(pkg_len_ == 0 )
+    {
+      recv_pkg_len(curr, len);
+      continue;
+    }
+    log_trace("pkg_len[%u] cached[%lu] recved[%u]", pkg_len_, curr_pkg_.size(), len);
+    uint32_t space = pkg_len_-curr_pkg_.size();
+    if(space> len)
+    {
+      curr_pkg_.insert(curr_pkg_.end(), curr, curr+len);
+      break;
+    }
+    else 
+    {
+      curr_pkg_.insert(curr_pkg_.end(), curr, curr+space);
+      curr += space;
+      len -= space;
+      pkg_len_ = 0;
+      cshandler.doProcess(shared_from_this(), curr_pkg_);
+    }
+  }while(true);
 }
 

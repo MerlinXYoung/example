@@ -9,25 +9,32 @@ namespace cs
 class ReqParser
 {
 public:
-    ReqParser():pkg_(nullptr),pkg_len_(0){}
-    ~ReqParser()=default;
-    int64_t check(char* base, uint32_t len);
-    EMsgID parse(Head& head, google::protobuf::Message*&);
-    inline void reset()
+    using head_ptr = std::shared_ptr<Head>;
+    using msg_ptr = std::shared_ptr<google::protobuf::Message>;
+    struct Data
     {
-        pkg_ = nullptr;
-        pkg_len_ = 0;
-    }
-    inline char* pkg(){return pkg_;}
-    inline uint32_t pkg_len()const{return pkg_len_;}
-    inline uint32_t body_len()const{return pkg_len_ - sizeof(uint16_t) -head_len_;}
-    inline char* body(){return pkg_+sizeof(uint16_t)+head_len_;}
+        const char* data;
+        uint32_t len;
+    };
+
+    ReqParser(){}
+    ~ReqParser()=default;
+    bool parse(const std::vector<char>& pkg);
+
+
+    inline head_ptr head(){return head_;}
+    inline msg_ptr body(){return body_;}
+    inline Data data(){return data_;}
 
 private:
-    char* pkg_;
-    uint32_t pkg_len_;
-    uint64_t head_len_;
+    //uint16_t head_len_;
     //uint32_t body_len_;
+
+    head_ptr head_;
+    
+    msg_ptr body_;
+    Data data_;
+
 
 };
 

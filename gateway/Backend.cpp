@@ -73,12 +73,12 @@ void Backend::send_client_other(Client& client, const char* data, size_t size)
   this->send(client, gw::ss::EMsgID::Other, data, size );
 }
 
-Client* Backend::recv() {
+Client::pointer Backend::recv() {
   try {
     int more = 0;
     uv_buf_t buf = {0};
     zmq::message_t message_client;
-    zsocket_.recv(message_client);
+    zsocket_.recv(&message_client);
     size_t more_size = sizeof(more);
     zsocket_.getsockopt(ZMQ_RCVMORE, &more, &more_size);
     int size = message_client.size();
@@ -91,7 +91,7 @@ Client* Backend::recv() {
     uint32_t client_id = *reinterpret_cast<uint32_t*>(
         message_client.data());  // atol(str_client_id.c_str());
     zmq::message_t message;
-    zsocket_.recv(message);
+    zsocket_.recv(&message);
     size = message.size();
     buf.base = (char*)malloc(size + sizeof(uint32_t));
     buf.len = size + sizeof(uint32_t);
@@ -101,7 +101,7 @@ Client* Backend::recv() {
     memcpy(buf.base + sizeof(uint32_t), message.data(), size);
     std::string data(d, size);
     log_trace("msg[%u]:%s\n", client_id, data.c_str());
-    auto client = ClientMgr::instance().Get(client_id);
+    auto client = ClientMgr::get_mutable_instance().Get(client_id);
     if (client) {
       client->async_write(buf);
     }

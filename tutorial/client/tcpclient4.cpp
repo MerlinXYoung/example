@@ -2,6 +2,7 @@
 * 一个简单的client.
 **************************************************/
 #include <stdio.h>
+#include <string>
 #include <libgonet/network.h>
 #include "../../build/gateway/cs_gateway.pb.h"
 using namespace std;
@@ -34,8 +35,10 @@ size_t OnMessage(SessionEntry sess, const char* data, size_t bytes)
     return bytes;
 }
 
-int main()
+int main(int argc, char** argv)
 {
+    string port = argc > 1?argv[1]:"20801";
+
     // Step1: 创建一个Client对象
     Client client;
 
@@ -47,7 +50,7 @@ int main()
     //   参见tcpserver.cpp教程
     //boost_ec ec = client.Connect("tcp://127.0.0.1:3030");
 
-    boost_ec ec = client.Connect("tcp://127.0.0.1:20801");
+    boost_ec ec = client.Connect("tcp://127.0.0.1:"+port);
 
     // Step4: 处理Connect返回值, 检测是否连接成功
     if (ec) {

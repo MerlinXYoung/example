@@ -23,7 +23,7 @@ int main(int argc, char** argv)
                 // printf("\n%s ", identity);
                 // s_dump(client_socket_);
                 zmq::message_t message_head;
-                server.recv(message_head);
+                server.recv(&message_head);
                 int size = message_head.size();
                 gw::ss::Head head;
                 if(!head.ParseFromArray(message_head.data(), message_head.size()))
@@ -40,7 +40,7 @@ int main(int argc, char** argv)
                 if(more)
                 {
                     zmq::message_t message;
-                    server.recv(message);
+                    server.recv(&message);
                     size = message.size();
                     std::unique_ptr<google::protobuf::Message> body;
                     switch(head.msgid()){

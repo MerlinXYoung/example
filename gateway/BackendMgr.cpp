@@ -5,11 +5,11 @@
 #include <vector>
 #include <unordered_set>
 
-BackendMgr& BackendMgr::instance()
-{
-    static BackendMgr _instance;
-    return _instance;
-}
+// BackendMgr& BackendMgr::instance()
+// {
+//     static BackendMgr _instance;
+//     return _instance;
+// }
 BackendMgr::backend_ptr BackendMgr::Alloc(uint32_t id, const std::string& url)
 {
     log_trace("id:%u", id);
@@ -44,7 +44,7 @@ void BackendMgr::recv()
             zitem_array.push_back({static_cast<void*>(it->zsocket_), 0, ZMQ_POLLIN, 0});    
         }
         
-        std::unordered_set<Client*> clients;
+        std::unordered_set<Client::pointer> clients;
         for (int i = 0; i < recv_cnt_; ++i) {
             // 10 milliseconds
             std::vector<zmq::pollitem_t> zitems(zitem_array);
@@ -55,7 +55,7 @@ void BackendMgr::recv()
                     // printf("\n%s ", identity);
                     // s_dump(client_socket_);
                     auto ptr = backends_array_[j];
-                    Client* client = ptr->recv();
+                    auto client = ptr->recv();
                     if(client)
                     {
                         clients.insert(client);
@@ -64,7 +64,7 @@ void BackendMgr::recv()
                 }
             }
         }
-        std::for_each(clients.begin(),clients.end(), [](Client* client){
+        std::for_each(clients.begin(),clients.end(), [](Client::pointer client){
             client->async_write();
         });
 

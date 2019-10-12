@@ -1,12 +1,13 @@
 #pragma once
-#include "../build/gateway/cs_gateway.pb.h"
-
+#include "cs_gateway.pb.h"
+#include "Client.h"
 class CSHandler
 {
 public:
-    int doProcess(uint32_t client_id, const gw::cs::Head& head, google::protobuf::Message& msg);
+    int doProcess(Client::pointer client, const Client::pkg_t& pkg);
+    int doProcess(Client::pointer client, const gw::cs::Head& head, google::protobuf::Message& msg);
 private:
-    int doAuth(uint32_t client_id, const gw::cs::Head& head, gw::cs::AuthReq& req);
+    int doAuth(Client::pointer client, const gw::cs::Head& head, gw::cs::AuthReq& req);
 
 };
 
