@@ -8,6 +8,9 @@
 #include "cs_gateway_utility.h"
 #include "ClientMgr.h"
 #include "log.h"
+#include "json.hpp"
+#include "byReflection/pb2json.h"
+#include <fstream>
 
 using namespace std;
 // #include <gateway.pb.h>
@@ -70,6 +73,19 @@ int GwServer::Load(const string& cfg, const string& log)
 {
     if(!json_file2pb(cfg_, cfg))
         return -1;
+
+    log_trace("cfg:\n%s",pb2json(cfg_ , true).c_str());
+
+    nlohmann::json j1,j2;
+    Pb2Json::Message2Json(cfg_,j1, true);
+    ifstream ifs(cfg);
+    ifs>>j2;
+    
+    ostringstream oss1, oss2;
+    oss1<<j1;
+    oss2<<j2;
+    log_trace("cfg parse status[%s]",oss1.str()==oss2.str()?"true":"false");
+
     
     switch(cfg_.listen().protocol())
     {
