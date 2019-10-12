@@ -6,52 +6,44 @@ namespace gw
 namespace cs
 {
 
-
-int64_t ReqParser::check(char* base, uint32_t len)
+bool ReqParser::parse(const std::vector<char>& pkg)
 {
-    uint32_t body_len = 0 ;
-    if(len< sizeof(uint32_t))
-        return 0 ;
-    
-    body_len = ntohl(*reinterpret_cast<uint32_t*>(base));
-    base += sizeof(uint32_t);
-    len -= sizeof(uint32_t);
+    head_ = std::make_shared<Head>();
 
-    if(len < body_len)
-        return 0 ;
-    
-    pkg_ = base;
-    pkg_len_ = body_len;
-    // char buf[1024];
-    // char *curr = buf;
-    // for(int i=0;i<body_len-sizeof(uint16_t);++i)
-    // {
-    //     size_t n = sprintf(curr, "%2X ", static_cast<int>(*(pkg_+sizeof(uint16_t)+i)));
-    //     curr+=n;
-    // }
-    // log_trace("%s",buf); 
+    if(pkg.size()< sizeof(uint16_t))
+        return false ;
+    const char* curr = pkg.data()+sizeof(uint16_t);
+    uint32_t len = pkg.size() - sizeof(uint16_t);
 
+    uint16_t head_len = ntohs(*reinterpret_cast<const uint16_t*>(pkg.data()));
+    if(len<head_len)
+        return false ;
 
-    return body_len+sizeof(uint32_t);
-}
-EMsgID ReqParser::parse(Head& head, google::protobuf::Message*& msg)
-{
-    msg = nullptr;
+    if(!head_->ParseFromArray(curr, head_len))
+        return false;
+    curr+=head_len;
+    len-=head_len;
+    switch(head_->msgid())
+    {
+        default:
+            return false;
+        case EMsgID::Other:
+        {
+            data_.data=curr;
+            data_.len=len;
+            return true;
+        }
+        case EMsgID::Auth:
+            body_ = std::shared_ptr<google::protobuf::Message>(reinterpret_cast<google::protobuf::Message*>(new gw::cs::AuthReq));
+            break;
+        case EMsgID::Ping:
+            body_ = std::shared_ptr<google::protobuf::Message>(reinterpret_cast<google::protobuf::Message*>(new gw::cs::PingReq));
+            break;
+    }
 
-    if(pkg_len_< sizeof(uint16_t))
-        return EMsgID::Invalid ;
-    head_len_ = ntohs(*reinterpret_cast<uint16_t*>(pkg_));
-    char* curr = pkg_+sizeof(uint16_t);
-    if(!head.ParseFromArray(curr, head_len_))
-        return EMsgID::Invalid;
-    curr+=head_len_;
-    if(EMsgID::Other == head.msgid())
-        return head.msgid();
-    if(EMsgID::Auth == head.msgid())
-        msg = new gw::cs::AuthReq;
-    if(!msg->ParseFromArray(curr, pkg_len_ - head_len_ -sizeof(uint16_t)))
-        return EMsgID::Invalid;
-    return head.msgid();
+    if(!body_->ParseFromArray(curr, len))
+        return false;
+    return true;
     
 }
 

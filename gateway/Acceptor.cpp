@@ -6,6 +6,13 @@
 #include "log.h"
 
 #define DEFAULT_BACKLOG 128
+Acceptor::~Acceptor()
+{
+    if(server_.loop)
+        uv_close(reinterpret_cast<uv_handle_t*>(&server_),[](uv_handle_t* hanele){
+            log_trace("Acceptor uv close cb");
+        });
+}
 int Acceptor::init(uv_loop_t& loop)
 {
     return uv_tcp_init(&loop, &server_);
@@ -24,11 +31,11 @@ int Acceptor::listen(const char* ip, int port)
             return;
         }
 
-        Client *client = ClientMgr::instance().Alloc();
+        Client::pointer client = ClientMgr::get_mutable_instance().Alloc(server->loop);
+        // log_trace("");
+        // client->init(server->loop);
         log_trace("");
-        client->init(server->loop);
-        log_trace("");
-        auto backend = BackendMgr::instance().Get();
+        auto backend = BackendMgr::get_mutable_instance().Get();
         client->set_backend_id(backend->id());
         log_trace("");
         backend->send_client_new(*client);
@@ -37,7 +44,8 @@ int Acceptor::listen(const char* ip, int port)
             client->async_read();
         }
         else {
-            client->async_close();
+            //client->async_close();
+            ClientMgr::get_mutable_instance().Free(client->id());
         }
     });
     if (r) {

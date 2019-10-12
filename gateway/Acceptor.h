@@ -5,8 +5,8 @@
 class Acceptor
 {
 public:
-    Acceptor(){}
-    ~Acceptor(){}
+    Acceptor()=default;
+    ~Acceptor();
 
     int init(uv_loop_t& loop);
     int listen(const char* ip, int port);

@@ -6,6 +6,7 @@ enum EMsgID
 {
     Invalid =0;
     Auth = 1;
+    Ping = 2;
     Other = 0x1000;
 }
 
@@ -28,5 +29,15 @@ message AuthReq
 message AuthRes
 {
     uint64 uid = 1;
+}
+
+message PingReq
+{
+
+}
+
+message PingRes
+{
+    
 }
 
