@@ -177,7 +177,7 @@ void Client::recved(const char* data, uint32_t len) {
       curr += space;
       len -= space;
       pkg_len_ = 0;
-      cshandler.doProcess(shared_from_this(), curr_pkg_);
+      //cshandler.doProcess(shared_from_this(), curr_pkg_);
     }
   }while(true);
 }
