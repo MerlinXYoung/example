@@ -11,6 +11,7 @@
 #include "json.hpp"
 #include "byReflection/pb2json.h"
 #include <fstream>
+#include <sstream>
 
 using namespace std;
 // #include <gateway.pb.h>
